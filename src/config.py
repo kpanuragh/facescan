@@ -1,5 +1,10 @@
-import torch
 from pathlib import Path
+
+try:
+    import torch
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -56,4 +61,4 @@ TARGET_RANGES = {
 }
 
 # Device
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "cuda" if (HAS_TORCH and torch.cuda.is_available()) else "cpu"
