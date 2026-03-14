@@ -1,0 +1,80 @@
+"""Create reproducible train/val/test data splits."""
+
+import json
+from pathlib import Path
+from typing import Tuple, List
+import numpy as np
+from sklearn.model_selection import train_test_split
+
+
+class DatasetSplitter:
+    """Create reproducible subject-level train/val/test splits."""
+
+    def __init__(self, train_ratio: float = 0.7, val_ratio: float = 0.15, random_seed: int = 42):
+        self.train_ratio = train_ratio
+        self.val_ratio = val_ratio
+        self.test_ratio = 1.0 - train_ratio - val_ratio
+        self.random_seed = random_seed
+
+    def create_splits(self, num_subjects: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Create subject-level splits to prevent data leakage.
+
+        Args:
+            num_subjects: Total number of subjects in dataset
+
+        Returns:
+            train_subj: Subject indices for training
+            val_subj: Subject indices for validation
+            test_subj: Subject indices for testing
+        """
+        np.random.seed(self.random_seed)
+
+        # Assign subjects to splits (subject-level, not frame-level)
+        subjects = np.arange(num_subjects)
+
+        train_subj, temp_subj = train_test_split(
+            subjects,
+            test_size=1 - self.train_ratio,
+            random_state=self.random_seed
+        )
+
+        val_subj, test_subj = train_test_split(
+            temp_subj,
+            test_size=self.test_ratio / (self.val_ratio + self.test_ratio),
+            random_state=self.random_seed
+        )
+
+        return train_subj, val_subj, test_subj
+
+    def save_splits(self, splits: Tuple[np.ndarray, np.ndarray, np.ndarray], output_dir: Path):
+        """Save split assignments to JSON."""
+        train_subj, val_subj, test_subj = splits
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        splits_dict = {
+            "train": train_subj.tolist(),
+            "validation": val_subj.tolist(),
+            "test": test_subj.tolist(),
+            "meta": {
+                "train_ratio": self.train_ratio,
+                "val_ratio": self.val_ratio,
+                "test_ratio": self.test_ratio,
+                "random_seed": self.random_seed
+            }
+        }
+
+        with open(output_dir / "splits.json", "w") as f:
+            json.dump(splits_dict, f, indent=2)
+
+        print(f"Splits saved to {output_dir / 'splits.json'}")
+        print(f"  Train: {len(train_subj)} subjects ({self.train_ratio*100:.0f}%)")
+        print(f"  Val:   {len(val_subj)} subjects ({self.val_ratio*100:.0f}%)")
+        print(f"  Test:  {len(test_subj)} subjects ({self.test_ratio*100:.0f}%)")
+
+    @staticmethod
+    def load_splits(splits_file: Path) -> dict:
+        """Load splits from JSON file."""
+        with open(splits_file, "r") as f:
+            return json.load(f)
