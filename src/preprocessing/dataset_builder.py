@@ -78,3 +78,24 @@ class DatasetSplitter:
         """Load splits from JSON file."""
         with open(splits_file, "r") as f:
             return json.load(f)
+
+
+# Convenience function for simple usage
+def create_splits(dataset, train_ratio: float = 0.7, val_ratio: float = 0.15, random_seed: int = 42) -> Tuple[List, List, List]:
+    """
+    Create train/val/test splits from dataset.
+
+    Args:
+        dataset: HuggingFace dataset or similar object with __len__
+        train_ratio: Fraction of data for training (default 0.7)
+        val_ratio: Fraction of data for validation (default 0.15)
+        random_seed: Random seed for reproducibility
+
+    Returns:
+        train_indices, val_indices, test_indices: Lists of indices for each split
+    """
+    num_samples = len(dataset)
+    splitter = DatasetSplitter(train_ratio=train_ratio, val_ratio=val_ratio, random_seed=random_seed)
+    train_subj, val_subj, test_subj = splitter.create_splits(num_samples)
+
+    return train_subj.tolist(), val_subj.tolist(), test_subj.tolist()
