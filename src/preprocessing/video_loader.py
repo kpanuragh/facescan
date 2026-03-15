@@ -87,3 +87,14 @@ class VideoLoader:
             "timestamp": sample.get("timestamp")
         }
         return ground_truth
+
+    def load_dataset(self):
+        """
+        Load MCD-rPPG dataset from HuggingFace.
+
+        Returns:
+            dataset: HuggingFace dataset object with all samples
+        """
+        if self.dataset is None:
+            self.download_dataset()
+        return self.dataset
