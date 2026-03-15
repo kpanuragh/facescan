@@ -25,25 +25,30 @@ class VideoLoader:
 
         print(f"Downloading {self.dataset_id}...")
         try:
-            # Try loading with trust_remote_code for custom processing
+            # Try standard loading first (without trust_remote_code)
             self.dataset = load_dataset(
                 self.dataset_id,
                 cache_dir=self.cache_dir,
-                streaming=False,
-                trust_remote_code=True
+                streaming=False
             )
+            # Try to get dataset size
+            try:
+                num_samples = len(self.dataset)
+                print(f"✓ Dataset downloaded: {num_samples} samples")
+            except:
+                print(f"✓ Dataset downloaded (size unknown - streaming mode)")
+
         except Exception as e:
-            print(f"Standard loading failed: {e}")
+            print(f"Standard loading failed: {type(e).__name__}")
             print("Retrying with streaming mode...")
             # Fallback: use streaming mode for incremental loading
             self.dataset = load_dataset(
                 self.dataset_id,
                 cache_dir=self.cache_dir,
-                streaming=True,
-                trust_remote_code=True
+                streaming=True
             )
+            print(f"✓ Dataset ready (streaming mode)")
 
-        print(f"Dataset downloaded: {len(self.dataset) if not self.dataset.streaming else 'streaming'} samples")
         return self.dataset
 
     def load_video_frames(self, video_path: str, frame_limit: int = None) -> Tuple[np.ndarray, Dict]:
