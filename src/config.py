@@ -16,9 +16,10 @@ MODELS_DIR = PROJECT_ROOT / "models"
 CHECKPOINTS_DIR = MODELS_DIR / "checkpoints"
 RESULTS_DIR = PROJECT_ROOT / "results"
 PLOTS_DIR = RESULTS_DIR / "plots"
+LOGS_DIR = RESULTS_DIR / "logs"
 
 # Create directories
-for d in [RAW_DATA_DIR, PROCESSED_DATA_DIR, SPLITS_DIR, CHECKPOINTS_DIR, PLOTS_DIR]:
+for d in [RAW_DATA_DIR, PROCESSED_DATA_DIR, SPLITS_DIR, CHECKPOINTS_DIR, PLOTS_DIR, LOGS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # Dataset configuration
