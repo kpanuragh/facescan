@@ -11,15 +11,33 @@ class FaceDetector:
     def __init__(self, roi_size: int = 128, padding: float = 0.1):
         self.roi_size = roi_size
         self.padding = padding
+        self.detector = None
+
+        # Try MediaPipe first, fallback to OpenCV Haar cascade
         try:
             import mediapipe as mp
-            self.mp_face_detection = mp.solutions.face_detection
-            self.detector = self.mp_face_detection.FaceDetection(
-                model_selection=0,
-                min_detection_confidence=0.5
-            )
-        except ImportError:
-            raise ImportError("mediapipe required. Install with: pip install mediapipe")
+            import warnings
+
+            # Use classic solutions API if available
+            if hasattr(mp, 'solutions'):
+                self.mp_face_detection = mp.solutions.face_detection
+                self.detector = self.mp_face_detection.FaceDetection(
+                    model_selection=0,
+                    min_detection_confidence=0.5
+                )
+                self.use_haar = False
+            else:
+                warnings.warn("Using OpenCV Haar cascade fallback for face detection")
+                self.cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+                self.detector = cv2.CascadeClassifier(self.cascade_path)
+                self.use_haar = True
+        except (ImportError, AttributeError) as e:
+            # Use OpenCV Haar cascade as final fallback
+            import warnings
+            warnings.warn(f"MediaPipe import failed ({e}), using OpenCV Haar cascade")
+            self.cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            self.detector = cv2.CascadeClassifier(self.cascade_path)
+            self.use_haar = True
 
     def detect_face(self, frame: np.ndarray) -> Optional[Tuple[int, int, int, int]]:
         """
@@ -31,19 +49,34 @@ class FaceDetector:
         Returns:
             bbox: (x, y, w, h) bounding box or None if no face detected
         """
-        h, w = frame.shape[:2]
-        results = self.detector.process(frame)
-
-        if not results.detections:
+        if self.detector is None:
             return None
 
-        detection = results.detections[0]
-        bbox = detection.location_data.relative_bounding_box
+        h, w = frame.shape[:2]
 
-        x = max(0, int(bbox.xmin * w))
-        y = max(0, int(bbox.ymin * h))
-        box_w = int(bbox.width * w)
-        box_h = int(bbox.height * h)
+        # Use OpenCV Haar cascade if MediaPipe unavailable
+        if self.use_haar:
+            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            faces = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
+
+            if len(faces) == 0:
+                return None
+
+            x, y, box_w, box_h = faces[0]
+        else:
+            # Use MediaPipe
+            results = self.detector.process(frame)
+
+            if not results.detections:
+                return None
+
+            detection = results.detections[0]
+            bbox = detection.location_data.relative_bounding_box
+
+            x = max(0, int(bbox.xmin * w))
+            y = max(0, int(bbox.ymin * h))
+            box_w = int(bbox.width * w)
+            box_h = int(bbox.height * h)
 
         # Add padding
         pad_x = int(box_w * self.padding)
