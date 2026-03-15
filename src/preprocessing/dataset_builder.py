@@ -81,7 +81,7 @@ class DatasetSplitter:
 
 
 # Convenience function for simple usage
-def create_splits(dataset, train_ratio: float = 0.7, val_ratio: float = 0.15, random_seed: int = 42) -> Tuple[List, List, List]:
+def create_splits(dataset, train_ratio: float = 0.7, val_ratio: float = 0.15, random_seed: int = 42, total_samples: int = None) -> Tuple[List, List, List]:
     """
     Create train/val/test splits from dataset.
 
@@ -90,11 +90,26 @@ def create_splits(dataset, train_ratio: float = 0.7, val_ratio: float = 0.15, ra
         train_ratio: Fraction of data for training (default 0.7)
         val_ratio: Fraction of data for validation (default 0.15)
         random_seed: Random seed for reproducibility
+        total_samples: Override dataset size (for streaming datasets)
 
     Returns:
         train_indices, val_indices, test_indices: Lists of indices for each split
     """
-    num_samples = len(dataset)
+    # Handle streaming datasets or when size is unknown
+    if total_samples is None:
+        try:
+            num_samples = len(dataset)
+            # If dataset is streaming, it may report size as 1 (first batch)
+            # Default to MCD-rPPG size if streaming
+            if hasattr(dataset, 'streaming') and dataset.streaming and num_samples <= 1:
+                num_samples = 3600  # MCD-rPPG has 3600 samples
+            elif num_samples <= 1:
+                num_samples = 3600  # Fallback to MCD-rPPG size
+        except:
+            num_samples = 3600  # Default to MCD-rPPG size
+    else:
+        num_samples = total_samples
+
     splitter = DatasetSplitter(train_ratio=train_ratio, val_ratio=val_ratio, random_seed=random_seed)
     train_subj, val_subj, test_subj = splitter.create_splits(num_samples)
 
