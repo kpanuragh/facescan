@@ -24,12 +24,26 @@ class VideoLoader:
             raise ImportError("datasets package required. Install with: pip install datasets")
 
         print(f"Downloading {self.dataset_id}...")
-        self.dataset = load_dataset(
-            self.dataset_id,
-            cache_dir=self.cache_dir,
-            streaming=False
-        )
-        print(f"Dataset downloaded: {len(self.dataset)} samples")
+        try:
+            # Try loading with trust_remote_code for custom processing
+            self.dataset = load_dataset(
+                self.dataset_id,
+                cache_dir=self.cache_dir,
+                streaming=False,
+                trust_remote_code=True
+            )
+        except Exception as e:
+            print(f"Standard loading failed: {e}")
+            print("Retrying with streaming mode...")
+            # Fallback: use streaming mode for incremental loading
+            self.dataset = load_dataset(
+                self.dataset_id,
+                cache_dir=self.cache_dir,
+                streaming=True,
+                trust_remote_code=True
+            )
+
+        print(f"Dataset downloaded: {len(self.dataset) if not self.dataset.streaming else 'streaming'} samples")
         return self.dataset
 
     def load_video_frames(self, video_path: str, frame_limit: int = None) -> Tuple[np.ndarray, Dict]:
